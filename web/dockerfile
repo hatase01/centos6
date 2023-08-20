@@ -1,0 +1,121 @@
+FROM hatase01/vboxcentos:6.6
+
+RUN sed -i "s|#baseurl=|baseurl=|g" /etc/yum.repos.d/CentOS-Base.repo \
+  && sed -i "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/CentOS-Base.repo \
+  && sed -i "s|http://mirror\.centos\.org/centos/\$releasever|http://ftp\.riken\.jp/Linux/centos-vault/6.6|g" /etc/yum.repos.d/CentOS-Base.repo
+
+RUN rpm -Uvh http://ftp.riken.jp/Linux/fedora-archive/fedora/epel/6/x86_64/epel-release-6-8.noarch.rpm
+RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+
+RUN sed -i "s|#baseurl=|baseurl=|g" /etc/yum.repos.d/epel.repo \
+  && sed -i "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/epel.repo \
+  && sed -i "s|http://download.fedoraproject.org/pub/|http://ftp\.riken\.jp/Linux/fedora-archive/fedora/|g" /etc/yum.repos.d/epel.repo
+
+RUN yum -y update
+RUN yum -y install wget
+
+RUN wget --no-check-certificate https://vault.centos.org/centos/6/updates/x86_64/Packages/nspr-4.21.0-1.el6_10.x86_64.rpm
+RUN wget --no-check-certificate https://vault.centos.org/centos/6/updates/x86_64/Packages/nss-3.44.0-7.el6_10.x86_64.rpm
+RUN wget --no-check-certificate https://vault.centos.org/centos/6/updates/x86_64/Packages/nss-softokn-3.44.0-6.el6_10.x86_64.rpm
+RUN wget --no-check-certificate https://vault.centos.org/centos/6/updates/x86_64/Packages/nss-softokn-freebl-3.44.0-6.el6_10.x86_64.rpm
+RUN wget --no-check-certificate https://vault.centos.org/centos/6/updates/x86_64/Packages/nss-sysinit-3.44.0-7.el6_10.x86_64.rpm
+RUN wget --no-check-certificate https://vault.centos.org/centos/6/updates/x86_64/Packages/nss-tools-3.44.0-7.el6_10.x86_64.rpm
+RUN wget --no-check-certificate https://vault.centos.org/centos/6/updates/x86_64/Packages/nss-util-3.44.0-1.el6_10.x86_64.rpm
+
+RUN rpm -Uvh nspr-4.21.0-1.el6_10.x86_64.rpm \
+  nss-3.44.0-7.el6_10.x86_64.rpm \
+  nss-softokn-3.44.0-6.el6_10.x86_64.rpm \
+  nss-softokn-freebl-3.44.0-6.el6_10.x86_64.rpm \
+  nss-sysinit-3.44.0-7.el6_10.x86_64.rpm \
+  nss-tools-3.44.0-7.el6_10.x86_64.rpm \
+  nss-util-3.44.0-1.el6_10.x86_64.rpm
+
+RUN yum -y install automake \
+        bind-utils \
+        bison \
+        bzip2 \
+        gcc \
+        gcc-c++ \
+        gdbm-devel \
+        git \
+        less \
+        libffi-devel \
+        libtool \
+        libxml2-devel \
+        libxslt-devel \
+        make \
+        mod_ssl \
+        openssh \
+        openssh-clients \
+        openssh-server \
+        openssl \
+        openssl-devel \
+        passwd \
+        patch \
+        readline \
+        readline-devel \
+        rsync \
+        sqlite-devel \
+        sudo \
+        tar \
+        tcl \
+        tcl-devel \
+        tcpdump \
+        tk \
+        tk-devel \
+        unzip \
+        vim \
+        which \
+        zip \
+        zlib \
+        zlib-devel && \
+    yum clean all
+RUN yum -y install --enablerepo=remi --enablerepo=remi-php56 \
+        php \
+        php-devel \
+        php-cli \
+        php-gd \
+        php-json \
+        php-mbstring \
+        php-mcrypt \
+        php-mysqlnd \
+        php-pdo \
+        php-pear \
+        php-pear-DB \
+        php-pear-Net-URL2 \
+        php-pecl-zip \
+        php-process \
+        php-xml \
+        php-gettext \
+        php-pecl-memcache \
+#        php-pecl-memcached \
+        php-pecl-apcu \
+        php-xdebug \
+        php-pecl-xdebug \
+        php-imagick && \
+    yum clean all
+
+RUN yum install -y httpd && \
+    yum clean all
+
+# RUN pear channel-update pear.php.net
+
+# ユーザー作成
+RUN useradd kabigon
+RUN echo 'kabigon:password' |chpasswd
+RUN echo "kabigon    ALL=(ALL)       ALL" >> /etc/sudoers
+
+# SSHD の初期化
+RUN /etc/init.d/sshd start
+RUN /etc/init.d/sshd stop
+RUN service httpd start
+
+# 22番ポートを外に開ける
+EXPOSE 22
+EXPOSE 80
+EXPOSE 443
+
+RUN /bin/cp -f /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
+
+# SSHD をデーモンとして起動する
+CMD ["/usr/sbin/sshd", "-D"]
